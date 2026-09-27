@@ -1,0 +1,100 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+    id 'kotlin-kapt'
+}
+
+android {
+    namespace 'com.clipdownloader'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.clipdownloader"
+        minSdk 24
+        targetSdk 34
+        versionCode 36
+        versionName "1.3.5"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    // APK 文件名固定为 软件名+版本号（ClipDownloader_v1.1.0.apk）
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            outputFileName = "ClipDownloader_v${variant.versionName}.apk"
+        }
+    }
+
+    // 固定签名：debug / release 均使用同一 keystore，签名永不变化
+    signingConfigs {
+        fixed {
+            storeFile rootProject.file('clipdownloader.jks')
+            storePassword 'clipdownloader2024'
+            keyAlias 'clipdownloader'
+            keyPassword 'clipdownloader2024'
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.fixed
+        }
+        release {
+            signingConfig signingConfigs.fixed
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+    buildFeatures {
+        viewBinding true
+        buildConfig true
+    }
+}
+
+dependencies {
+    // AndroidX Core
+    implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.activity:activity-ktx:1.8.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.6.2'
+    implementation 'androidx.lifecycle:lifecycle-service:2.6.2'
+    implementation 'androidx.lifecycle:lifecycle-process:2.6.2'
+
+    // Material Design
+    implementation 'com.google.android.material:material:1.10.0'
+
+    // Coroutines
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+
+    // OkHttp - 网络请求
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    implementation 'com.squareup.okhttp3:okhttp-urlconnection:4.12.0'
+
+    // JSON 解析
+    implementation 'org.json:json:20231013'
+
+    // Preferences
+    implementation 'androidx.preference:preference-ktx:1.2.1'
+
+    // WorkManager - 后台下载
+    implementation 'androidx.work:work-runtime-ktx:2.8.1'
+
+    // Navigation Component
+    implementation 'androidx.navigation:navigation-fragment-ktx:2.7.4'
+    implementation 'androidx.navigation:navigation-ui-ktx:2.7.4'
+
+    // Glide - 图片加载
+    implementation 'com.github.bumptech.glide:glide:4.16.0'
+    kapt 'com.github.bumptech.glide:compiler:4.16.0'
+
+    // Gson
+    implementation 'com.google.code.gson:gson:2.10.1'
+}

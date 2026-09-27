@@ -1,0 +1,86 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# 需要写权限，用于把构建产物推送到 v版本号 分支
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: 构建 Release APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+
+      - name: 安装 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: 安装 Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: 安装编译所需 SDK 组件
+        run: sdkmanager "platforms;android-34" "build-tools;33.0.1"
+
+      - name: 配置 Gradle 缓存
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: 读取版本号
+        id: version
+        run: |
+          VERSION=$(grep -oP 'versionName\s+"\K[^"]+' app/build.gradle | head -n1)
+          echo "版本号: $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: 构建 Release APK
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: 按「项目名_v版本号」重命名 APK
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          APK=$(ls app/build/outputs/apk/release/*.apk | head -n1)
+          mkdir -p dist
+          cp "$APK" "dist/ClipDownloader_v${VERSION}.apk"
+          ls -lh dist/
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClipDownloader_v${{ steps.version.outputs.version }}
+          path: dist/*.apk
+          if-no-files-found: error
+
+      - name: 推送到 v版本号 分支
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          BRANCH="v${VERSION}"
+          APK="dist/ClipDownloader_v${VERSION}.apk"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # 分支只承载该版本的构建产物，用 orphan 分支保证内容干净
+          cp "$APK" "/tmp/ClipDownloader_v${VERSION}.apk"
+          git checkout --orphan "$BRANCH"
+          git rm -rf . > /dev/null
+          cp "/tmp/ClipDownloader_v${VERSION}.apk" .
+          git add -f "ClipDownloader_v${VERSION}.apk"
+          git commit -m "build: ClipDownloader v${VERSION}"
+
+          if git ls-remote --exit-code --heads origin "$BRANCH" > /dev/null 2>&1; then
+            git push --force origin "$BRANCH"
+          else
+            git push origin "$BRANCH"
+          fi
+          echo "已推送到分支 $BRANCH"

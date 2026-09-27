@@ -1,0 +1,13 @@
+# 仓库内统一 LF，工作区保留本机换行
+* text=auto
+
+# 构建脚本必须是 LF，否则 Linux CI 上会报 bad interpreter
+gradlew text eol=lf
+*.bat text eol=crlf
+
+# 二进制文件不做换行转换
+*.jks binary
+*.jar binary
+*.png binary
+*.jpg binary
+*.apk binary

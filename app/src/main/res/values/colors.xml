@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 主色 - 蓝色系 -->
+    <color name="primary">#1565C0</color>
+    <color name="primary_light">#5E92F3</color>
+    <color name="primary_dark">#003C8F</color>
+    <color name="on_primary">#FFFFFF</color>
+
+    <!-- 次要色 -->
+    <color name="secondary">#00897B</color>
+    <color name="on_secondary">#FFFFFF</color>
+
+    <!-- 背景 -->
+    <color name="background">#FAFAFA</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="on_background">#1A1A1A</color>
+    <color name="on_surface">#1A1A1A</color>
+    <color name="on_surface_variant">#666666</color>
+
+    <!-- 错误 -->
+    <color name="error">#D32F2F</color>
+
+    <!-- 通知图标背景 -->
+    <color name="notification_bg">#1565C0</color>
+</resources>

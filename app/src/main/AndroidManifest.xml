@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- 网络 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- 下载完成通知 -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- 各厂商相册/文件管理器包名可见性（Android 11+ 软件包过滤，
+         用于「优先相册打开视频」与「点击头像跳转文件夹」） -->
+    <queries>
+        <package android:name="com.coloros.gallery3d" />
+        <package android:name="com.heytap.gallery3d" />
+        <package android:name="com.oppo.gallery3d" />
+        <package android:name="com.miui.gallery" />
+        <package android:name="com.sec.android.gallery3d" />
+        <package android:name="com.huawei.photos" />
+        <package android:name="com.google.android.apps.photos" />
+        <package android:name="com.coloros.filemanager" />
+        <package android:name="com.heytap.filemanager" />
+        <package android:name="com.android.fileexplorer" />
+        <package android:name="com.mi.android.globalFileexplorer" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="video/*" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="image/*" />
+        </intent>
+    </queries>
+
+    <!-- 存储（保存下载内容） -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+
+    <application
+        android:name=".App"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.ClipDownloader"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:requestLegacyExternalStorage="true"
+        tools:targetApi="34">
+
+        <!-- 主界面：打开 App 时自动读取剪贴板并触发下载 -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- 分享入口（兼容）：App 内分享 → 选择本应用触发下载
+             走 ShareActivity → MainActivity 手动下载路径，不再需要后台进程 -->
+        <activity
+            android:name=".ShareActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:label="@string/share_target_label"
+            android:theme="@style/Theme.ClipDownloader.Translucent">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
+        <!-- 下载完成通知点击 -->
+        <activity
+            android:name=".DownloadResultActivity"
+            android:exported="false"
+            android:theme="@style/Theme.ClipDownloader.Translucent" />
+
+        <!-- 下载完成后用系统查看器打开文件（相册/播放器） -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+    </application>
+
+</manifest>

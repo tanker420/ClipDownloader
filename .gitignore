@@ -1,0 +1,25 @@
+# Gradle
+.gradle/
+build/
+app/build/
+
+# 本机 SDK 路径，不同机器不一样
+local.properties
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# 构建产物（由 GitHub Actions 构建并发布到 v版本号 分支）
+*.apk
+*.aab
+dist/
+captures/
+
+# Kotlin
+.kotlin/
+
+# 本地工具 / Agent 工作目录
+.workbuddy/
+.zcode/

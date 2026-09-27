@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">剪贴板下载器</string>
+    <string name="share_target_label">下载到本机</string>
+    <string name="channel_download">下载进度</string>
+    <string name="channel_result">下载完成</string>
+</resources>

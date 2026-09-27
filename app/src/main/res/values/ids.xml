@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 缩略图当前加载的 URL，避免列表高频刷新时 Glide 重复发起请求 -->
+    <item name="tag_cover_url" type="id" />
+    <!-- 缩略图加载失败记录（来源#失败时刻），冷却后允许重试 -->
+    <item name="tag_cover_failed" type="id" />
+    <!-- 多图网格当前内容的签名：轮询刷新时内容没变就跳过整格重建 -->
+    <item name="tag_grid_sig" type="id" />
+</resources>
