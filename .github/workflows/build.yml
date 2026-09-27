@@ -1,18 +1,26 @@
 name: Build APK
 
+# 推送到 main 或手动触发
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
-# 需要写权限，用于把构建产物推送到 v版本号 分支
+# 需要写权限，用于把构建产物推送到 v<版本号> 分支
 permissions:
   contents: write
+
+# 同一分支上的重复触发取消旧任务，避免产物分支被并发覆盖
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     name: 构建 Release APK
+    # GitHub 托管运行器：已内置 Android SDK，Linux 环境与 Gradle 8.2 / JDK 17 匹配
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: 拉取代码
@@ -24,11 +32,11 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: 安装 Android SDK
+      - name: 安装 Android SDK 命令行工具
         uses: android-actions/setup-android@v3
 
       - name: 安装编译所需 SDK 组件
-        run: sdkmanager "platforms;android-34" "build-tools;33.0.1"
+        run: sdkmanager "platform-tools" "platforms;android-34" "build-tools;33.0.1"
 
       - name: 配置 Gradle 缓存
         uses: gradle/actions/setup-gradle@v4
@@ -36,7 +44,11 @@ jobs:
       - name: 读取版本号
         id: version
         run: |
-          VERSION=$(grep -oP 'versionName\s+"\K[^"]+' app/build.gradle | head -n1)
+          VERSION=$(grep -m1 -o 'versionName[[:space:]]*"[^"]*"' app/build.gradle | cut -d'"' -f2)
+          if [ -z "$VERSION" ]; then
+            echo "未能从 app/build.gradle 读取 versionName" >&2
+            exit 1
+          fi
           echo "版本号: $VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
@@ -70,7 +82,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # 分支只承载该版本的构建产物，用 orphan 分支保证内容干净
+          # 该分支只承载对应版本的构建产物，用 orphan 分支保证内容干净
           cp "$APK" "/tmp/ClipDownloader_v${VERSION}.apk"
           git checkout --orphan "$BRANCH"
           git rm -rf . > /dev/null
