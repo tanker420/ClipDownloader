@@ -97,18 +97,31 @@ jobs:
 
           # 上一个版本 tag 作为更新说明的起点
           PREV_TAG=$(git tag --sort=-creatordate | grep -vx "$TAG" | head -n1 || true)
-          NOTES_ARGS=()
-          if [ -n "$PREV_TAG" ]; then
-            echo "上一版本 tag：$PREV_TAG"
-            NOTES_ARGS+=(--notes-start-tag "$PREV_TAG")
-          fi
+
+          # 更新说明 = 两版本之间的提交摘要（按提交时间正序）
+          {
+            echo "## 更新内容"
+            echo
+            if [ -n "$PREV_TAG" ]; then
+              git log --reverse --pretty=format:"- %s (%h)" "$PREV_TAG..$TAG"
+            else
+              git log --reverse --pretty=format:"- %s (%h)" "$TAG"
+            fi
+            echo
+            echo
+            if [ -n "$PREV_TAG" ]; then
+              echo "**Full Changelog**: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/compare/${PREV_TAG}...${TAG}"
+            fi
+          } > RELEASE_NOTES.md
+          cat RELEASE_NOTES.md
 
           if gh release view "$TAG" > /dev/null 2>&1; then
-            echo "Release $TAG 已存在，仅覆盖安装包"
+            echo "Release $TAG 已存在，更新说明并覆盖安装包"
+            gh release edit "$TAG" --notes-file RELEASE_NOTES.md
             gh release upload "$TAG" dist/*.apk --clobber
           else
             gh release create "$TAG" dist/*.apk \
               --title "ClipDownloader v${VERSION}" \
-              --generate-notes "${NOTES_ARGS[@]}"
+              --notes-file RELEASE_NOTES.md
           fi
           echo "Release: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG"
