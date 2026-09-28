@@ -1072,43 +1072,47 @@ class CloudParser(
 
     @Volatile private var kukutoolProfileCache: KukutoolProfile? = null
 
-    /** 从站点首页 chunk 9802 动态发现协议配置（authRoute + 字段名，站点轮换时自动跟上） */
+    /** 取文本（失败返回 null），供 Kukutool 协议发现使用 */
+    private fun kukutoolText(url: String): String? = try {
+        client.newCall(
+            Request.Builder().url(url).header("User-Agent", DESKTOP_UA).build()
+        ).execute().use { resp -> if (!resp.isSuccessful) null else resp.body?.string() }
+    } catch (e: Exception) {
+        LogFile.w("CloudParser", "kukutool 请求失败 $url: ${e.message}")
+        null
+    }
+
+    /**
+     * 从站点首页全部 chunk 里动态发现协议配置（authRoute + 字段名，站点轮换时自动跟上）。
+     *
+     * 2026-09-27 实测：配置所在 chunk 号会随构建变化（原写死的 9802 已不存在，现为 1778），
+     * 且 wafcdn 会间歇返回 39 字节挑战页（无 chunk 列表），故改为「扫描全部 chunk + 首页重试」。
+     */
     private fun kukutoolProfile(root: String): KukutoolProfile? {
         kukutoolProfileCache?.let { return it }
-        val html = try {
-            client.newCall(
-                Request.Builder().url("$root/")
-                    .header("User-Agent", DESKTOP_UA).build()
-            ).execute().use { resp -> if (!resp.isSuccessful) "" else resp.body?.string().orEmpty() }
-        } catch (e: Exception) {
-            LogFile.w("CloudParser", "kukutool 页面请求失败: ${e.message}"); ""
+
+        var chunks = emptyList<String>()
+        for (attempt in 1..KUKUTOOL_PAGE_TRIES) {
+            val html = kukutoolText("$root/").orEmpty()
+            chunks = CHUNK_SRC_REGEX.findAll(html).map { it.groupValues[1] }.toList()
+            if (chunks.isNotEmpty()) break
+            LogFile.w("CloudParser", "kukutool 首页未返回 chunk 列表（疑似 wafcdn 挑战页），第 $attempt 次")
         }
-        // chunk 9802 的哈希在首页 HTML 的 script 列表里
-        val chunkUrl = Regex("/_next/static/chunks/9802-[a-f0-9]+\\.js").find(html)?.value
-        if (chunkUrl.isNullOrBlank()) {
+        if (chunks.isEmpty()) {
             channelErrors["Kukutool"] = "协议配置入口未找到（站点已更新）"
             return null
         }
-        val chunk = try {
-            client.newCall(
-                Request.Builder().url(if (chunkUrl.startsWith("http")) chunkUrl else "$root$chunkUrl")
-                    .header("User-Agent", DESKTOP_UA).build()
-            ).execute().use { resp -> if (!resp.isSuccessful) "" else resp.body?.string().orEmpty() }
-        } catch (e: Exception) {
-            LogFile.w("CloudParser", "kukutool chunk 请求失败: ${e.message}"); ""
-        }
-        val m = Regex("""JSON\.parse\('(\{"activeProfileId".*?\})'\)""", RegexOption.DOT_MATCHES_ALL).find(chunk)
-            ?: run {
-                channelErrors["Kukutool"] = "协议配置解析失败（站点已更新）"
-                return null
-            }
-        val conf = try { JSONObject(m.groupValues[1]) } catch (_: Exception) { null } ?: run {
-            channelErrors["Kukutool"] = "协议配置 JSON 无效"
-            return null
-        }
-        val activeId = conf.optString("activeProfileId")
-        val profiles = conf.optJSONArray("profiles")
-        if (profiles != null) {
+
+        // 配置藏在某个 chunk 里：新版是 JSON.parse('…') 字面量，旧版是裸对象
+        for (chunkUrl in chunks) {
+            val chunk = kukutoolText(if (chunkUrl.startsWith("http")) chunkUrl else "$root$chunkUrl") ?: continue
+            if (!chunk.contains("activeProfileId")) continue
+            val confText = KUKUTOOL_CONF_WRAPPED_REGEX.find(chunk)?.groupValues?.get(1)
+                ?: PROFILE_JSON_REGEX.find(chunk)?.value
+                ?: continue
+            val conf = try { JSONObject(confText) } catch (_: Exception) { continue }
+            val activeId = conf.optString("activeProfileId")
+            val profiles = conf.optJSONArray("profiles") ?: continue
             for (i in 0 until profiles.length()) {
                 val p = profiles.optJSONObject(i) ?: continue
                 if (p.optString("id") != activeId) continue
@@ -1780,7 +1784,7 @@ class CloudParser(
         // ---- Hellotik 协议常量 ----
         private val CHUNK_SRC_REGEX = Regex("""src="(/_next/static/chunks/[^"]+\.js)"""")
         private val PROFILE_JSON_REGEX =
-            Regex("""\{"activeProfileId":"[^"]+","previousProfileId":"[^"]+","profiles":\[.*?\]\}""", RegexOption.DOT_MATCHES_ALL)
+            Regex("""\{"activeProfileId":"[^"]+","previousProfileId":"[^"]*","profiles":\[.*?\]\}""", RegexOption.DOT_MATCHES_ALL)
 
         /** 响应解密固定密钥（站点 chunk 2261 内嵌，32 字节 = AES-256） */
         private const val HELLOTIK_RESP_KEY = "93838338562359368888868323563256"
@@ -1795,6 +1799,13 @@ class CloudParser(
         // ---- Kukutool 协议常量 ----
         /** 响应解密密钥（站点 chunk 3052 内嵌，AES-256-CBC，key=SHA-256(此字符串)） */
         private const val KUKUTOOL_RESP_KEY = "12345678901234567890123456789013"
+
+        /** 首页请求重试次数（wafcdn 会间歇返回无 chunk 列表的挑战页） */
+        private const val KUKUTOOL_PAGE_TRIES = 3
+
+        /** 协议配置字面量：JSON.parse('{"activeProfileId":…}') 包裹式 */
+        private val KUKUTOOL_CONF_WRAPPED_REGEX =
+            Regex("""JSON\.parse\('(\{"activeProfileId".*?\})'\)""", RegexOption.DOT_MATCHES_ALL)
 
         private val VIDEO_HINTS = listOf(
             ".mp4", "playwm", "/play?", "video/tos", "douyinvod", "bilivideo",

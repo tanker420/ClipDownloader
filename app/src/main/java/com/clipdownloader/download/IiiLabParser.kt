@@ -17,7 +17,9 @@ import java.util.concurrent.TimeUnit
  * iiiLab 网页端解析器（国外平台首选通道）。
  *
  * 协议 2026-08-22 从 twitter.iiilab.com 前端逆向（app-*.js）：
- * - POST https://service.iiilab.com/api/web/extract
+ * - POST https://webapi.iiilab.com/api/web/extract
+ *   （2026-09-27 实测：旧域名 service.iiilab.com 已返回 404，站点迁移到 webapi 子域，
+ *    签名算法与 secret 均未变）
  * - 请求头：G-Timestamp=<unix秒>；G-Footer=MD5(url + site + 时间戳 + secret)
  * - 请求体：{"url":"<分享链接>","site":"<平台标识>"}
  * - secret 为前端两段 base64 拼接（与站点保持一致的弱混淆，避免明文检索）
@@ -226,7 +228,7 @@ class IiiLabParser {
 
     companion object {
         private const val TAG = "IiiLabParser"
-        private const val API_BASE = "https://service.iiilab.com"
+        private const val API_BASE = "https://webapi.iiilab.com"
 
         /** 前端 base64 两段（atob 后拼接即为签名 secret） */
         private val SECRET_PARTS = listOf("SlNuSEtRZlA=", "MUlseklRenM=")
