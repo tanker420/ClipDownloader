@@ -12,13 +12,13 @@ android {
         applicationId "com.clipdownloader"
         minSdk 24
         targetSdk 34
-        versionCode 36
-        versionName "1.3.5"
+        versionCode 37
+        versionName "1.3.6"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    // APK 文件名固定为 软件名+版本号（ClipDownloader_v1.1.0.apk）
+    // APK 文件名固定为 软件名+版本号（ClipDownloader_v1.3.6.apk）
     applicationVariants.all { variant ->
         variant.outputs.all { output ->
             outputFileName = "ClipDownloader_v${variant.versionName}.apk"
