@@ -19,7 +19,3 @@ captures/
 
 # Kotlin
 .kotlin/
-
-# 本地工具 / Agent 工作目录
-.workbuddy/
-.zcode/
