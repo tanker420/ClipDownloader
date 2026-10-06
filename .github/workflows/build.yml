@@ -10,6 +10,12 @@ on:
 permissions:
   contents: write
 
+# 同一版本的重复发版串行执行，避免 force push 版本分支互相覆盖
+# 注意：不做 cancel-in-progress —— 宁可排队，也不要把发版中途掐断
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release:
     name: 构建并发布
@@ -44,6 +50,9 @@ jobs:
       - name: 配置 Gradle 缓存
         uses: gradle/actions/setup-gradle@v6
 
+      - name: 校验 Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v6
+
       - name: 读取版本号并校验 tag
         id: version
         run: |
@@ -66,14 +75,22 @@ jobs:
 
       - name: 按「项目名_v版本号」重命名 APK
         run: |
+          set -euo pipefail
           VERSION="${{ steps.version.outputs.version }}"
-          APK=$(ls app/build/outputs/apk/release/*.apk | head -n1)
+          # 只在「恰好一个 APK」时继续，避免静默选错文件
+          APK=$(ls app/build/outputs/apk/release/*.apk)
+          COUNT=$(printf '%s\n' "$APK" | wc -l)
+          if [ "$COUNT" -ne 1 ]; then
+            echo "预期 1 个 APK，实际 $COUNT 个：" >&2
+            printf '%s\n' "$APK" >&2
+            exit 1
+          fi
           mkdir -p dist
           cp "$APK" "dist/ClipDownloader_v${VERSION}.apk"
           ls -lh dist/
 
       - name: 上传构建产物
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ClipDownloader_v${{ steps.version.outputs.version }}
           path: dist/*.apk
